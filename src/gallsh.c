@@ -1,6 +1,8 @@
 #include <gtk/gtk.h>
 #include <stdio.h>
 
+const char filename[] = "images/alphabet-vr-vasarely.jpg";
+
 static void app_activate(GApplication *app, gpointer *user_data) {
     GtkWidget *window;
     GtkWidget *image;
@@ -8,10 +10,10 @@ static void app_activate(GApplication *app, gpointer *user_data) {
     GtkCssProvider *css_provider;
 
     window  = gtk_application_window_new(GTK_APPLICATION(app));
-    image   = gtk_image_new_from_file("images/alphabet-vr-vasarely.jpg");
+    image   = gtk_image_new_from_file(filename);
     display = gtk_widget_get_display(GTK_WIDGET(window));
     css_provider = gtk_css_provider_new();
-    gtk_css_provider_load_from_data(css_provider, "window { background-color:black; }", -1);
+    gtk_css_provider_load_from_data(css_provider, "window { background-color:black; } image { margin:10em; }", -1);
     gtk_style_context_add_provider_for_display(display, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
     gtk_window_set_child(GTK_WINDOW(window), image);
