@@ -16,6 +16,11 @@ int read_filenames(char **entries, char *dirname);
 char *random_filename(char **entries, int count, int *selected);
 void destroy_filenames(char **entries, int count);
 
+gboolean
+key_pressed ( GtkEventControllerKey* self, guint keyval, guint keycode, GdkModifierType* state, gpointer user_data) {
+    g_print("%d %d\n", keyval, keycode);
+    return false;
+}
 static void app_activate(GApplication *app, gpointer *user_data) {
     GtkWidget *window;
     GtkWidget *image;
@@ -34,6 +39,8 @@ static void app_activate(GApplication *app, gpointer *user_data) {
     gtk_style_context_add_provider_for_display(display, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
     event_controller = gtk_event_controller_key_new();
+    g_signal_connect(event_controller, "key-pressed", G_CALLBACK(key_pressed), NULL);
+    gtk_widget_add_controller(window, event_controller);
     gtk_window_set_child(GTK_WINDOW(window), image);
     gtk_window_set_title(GTK_WINDOW(window), "gallsh");
     gtk_window_set_default_size(GTK_WINDOW(window), 1000, 1000);
