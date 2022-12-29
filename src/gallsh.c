@@ -4,6 +4,15 @@
 #include <stdlib.h>
 #include <time.h>
 
+typedef struct user_data {
+    char **filenames;
+    int count;
+} USER_DATA;
+
+int count_directory_entries(char *dirname);
+int read_filenames(char **entries, char *dirname);
+char *random_filename(char **entries, int count);
+void destroy_filenames(char **entries, int count);
 
 char *filename;
 
@@ -12,9 +21,10 @@ static void app_activate(GApplication *app, gpointer *user_data) {
     GtkWidget *image;
     GdkDisplay *display;
     GtkCssProvider *css_provider;
+    USER_DATA *data = (USER_DATA *)user_data;
 
     window  = gtk_application_window_new(GTK_APPLICATION(app));
-    image   = gtk_image_new_from_file(filename);
+    image   = gtk_image_new_from_file(random_filename(data->filenames, data->count));
     display = gtk_widget_get_display(GTK_WIDGET(window));
     css_provider = gtk_css_provider_new();
     gtk_css_provider_load_from_data(css_provider, "window { background-color:black; } image { margin:10em; }", -1);
@@ -59,6 +69,10 @@ int read_filenames(char **entries, char *dirname) {
     return count;
 }
 
+char *random_filename(char **entries, int count) {
+    int selected = rand() % count;
+    return entries[selected];
+}
 void destroy_filenames(char **entries, int count) {
     for(int i=0; i < count; i++) {
         free(entries[i]);
@@ -68,17 +82,16 @@ void destroy_filenames(char **entries, int count) {
 int main(int argc, char **argv) {
     GtkApplication *app;
     int status;
-    int count = count_directory_entries("images/");
-    char **entries = (char **)malloc(sizeof(char *) * count);
-    read_filenames(entries, "images/");
     srand(time(NULL));
-    int selected = rand() % count;
-    filename = entries[selected];
-    printf("count:%d selected:%d %s\n", count, selected, filename);
+    USER_DATA *data = (USER_DATA *)malloc(sizeof(USER_DATA));
+    data->count = count_directory_entries("images/");
+    data->filenames = (char **)malloc(sizeof(char *) * data->count);
+    read_filenames(data->filenames, "images/");
     app = gtk_application_new(NULL, G_APPLICATION_DEFAULT_FLAGS);
-    g_signal_connect(app, "activate", G_CALLBACK(app_activate), NULL);
+    g_signal_connect(app, "activate", G_CALLBACK(app_activate), data);
     status = g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
-    destroy_filenames(entries, count);
+    destroy_filenames(data->filenames, data->count);
+    free(data);
     return status;
 }
