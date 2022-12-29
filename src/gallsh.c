@@ -1,7 +1,11 @@
 #include <gtk/gtk.h>
 #include <stdio.h>
+#include <dirent.h>
+#include <stdlib.h>
+#include <time.h>
 
-const char filename[] = "images/alphabet-vr-vasarely.jpg";
+
+char filename[512];
 
 static void app_activate(GApplication *app, gpointer *user_data) {
     GtkWidget *window;
@@ -26,7 +30,29 @@ static void app_activate(GApplication *app, gpointer *user_data) {
 int main(int argc, char **argv) {
     GtkApplication *app;
     int status;
-
+    DIR *directory;
+    struct dirent *entry;
+    srand(time(NULL));
+    int selected = rand() % 3;
+    printf("selected:%d\n", selected);
+    directory = opendir("images");
+    if (directory) {
+        int count = 0;
+        while ((entry = readdir(directory)) != NULL) {
+            if(!strcmp(entry->d_name, ".."))
+                continue;
+            if(entry->d_name[0] == '.')
+                continue;
+            if(count == selected) {
+                filename[0] = '\0';
+                strcat(filename, "images/");
+                strcat(filename, entry->d_name);
+                printf("selected:%s\n", filename);
+            }
+            count++;
+        }
+        closedir(directory);
+    }
     app = gtk_application_new(NULL, G_APPLICATION_DEFAULT_FLAGS);
     g_signal_connect(app, "activate", G_CALLBACK(app_activate), NULL);
     status = g_application_run(G_APPLICATION(app), argc, argv);
