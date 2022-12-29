@@ -5,7 +5,7 @@
 #include <time.h>
 
 
-char filename[512];
+char *filename;
 
 static void app_activate(GApplication *app, gpointer *user_data) {
     GtkWidget *window;
@@ -27,35 +27,58 @@ static void app_activate(GApplication *app, gpointer *user_data) {
     gtk_widget_show(window);
 }
 
+int count_directory_entries(char *dirname) {
+    DIR *directory;
+    struct dirent *entry;
+    directory = opendir(dirname);
+    int count = 0;
+    if(directory) {
+        while((entry = readdir(directory)) != NULL)
+            if(entry->d_name[0] != '.')
+                count++;
+        closedir(directory);
+    }
+    return count;
+}
+
+int read_filenames(char **entries, char *dirname) {
+    DIR *directory;
+    struct dirent *entry;
+    directory = opendir(dirname);
+    int count = 0;
+    if(directory) {
+        while((entry = readdir(directory)) != NULL)
+            if(entry->d_name[0] != '.') {
+                char *entry_name = (char *)malloc(strlen(dirname) + strlen(entry->d_name) + 1);
+                strcpy(entry_name, dirname);
+                strcat(entry_name, entry->d_name);
+                entries[count++] = entry_name;
+            }
+        closedir(directory);
+    }
+    return count;
+}
+
+void destroy_filenames(char **entries, int count) {
+    for(int i=0; i < count; i++) {
+        free(entries[i]);
+    }
+}
+
 int main(int argc, char **argv) {
     GtkApplication *app;
     int status;
-    DIR *directory;
-    struct dirent *entry;
+    int count = count_directory_entries("images/");
+    char **entries = (char **)malloc(sizeof(char *) * count);
+    read_filenames(entries, "images/");
     srand(time(NULL));
-    int selected = rand() % 3;
-    printf("selected:%d\n", selected);
-    directory = opendir("images");
-    if (directory) {
-        int count = 0;
-        while ((entry = readdir(directory)) != NULL) {
-            if(!strcmp(entry->d_name, ".."))
-                continue;
-            if(entry->d_name[0] == '.')
-                continue;
-            if(count == selected) {
-                filename[0] = '\0';
-                strcat(filename, "images/");
-                strcat(filename, entry->d_name);
-                printf("selected:%s\n", filename);
-            }
-            count++;
-        }
-        closedir(directory);
-    }
+    int selected = rand() % count;
+    filename = entries[selected];
+    printf("count:%d selected:%d %s\n", count, selected, filename);
     app = gtk_application_new(NULL, G_APPLICATION_DEFAULT_FLAGS);
     g_signal_connect(app, "activate", G_CALLBACK(app_activate), NULL);
     status = g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
+    destroy_filenames(entries, count);
     return status;
 }
