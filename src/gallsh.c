@@ -7,29 +7,33 @@
 typedef struct user_data {
     char **filenames;
     int count;
+    int selected;
+
 } USER_DATA;
 
 int count_directory_entries(char *dirname);
 int read_filenames(char **entries, char *dirname);
-char *random_filename(char **entries, int count);
+char *random_filename(char **entries, int count, int *selected);
 void destroy_filenames(char **entries, int count);
-
-char *filename;
 
 static void app_activate(GApplication *app, gpointer *user_data) {
     GtkWidget *window;
     GtkWidget *image;
     GdkDisplay *display;
     GtkCssProvider *css_provider;
+    GtkEventController *event_controller;
+
+
     USER_DATA *data = (USER_DATA *)user_data;
 
     window  = gtk_application_window_new(GTK_APPLICATION(app));
-    image   = gtk_image_new_from_file(random_filename(data->filenames, data->count));
+    image   = gtk_image_new_from_file(random_filename(data->filenames, data->count, &data->selected));
     display = gtk_widget_get_display(GTK_WIDGET(window));
     css_provider = gtk_css_provider_new();
     gtk_css_provider_load_from_data(css_provider, "window { background-color:black; } image { margin:10em; }", -1);
     gtk_style_context_add_provider_for_display(display, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
+    event_controller = gtk_event_controller_key_new();
     gtk_window_set_child(GTK_WINDOW(window), image);
     gtk_window_set_title(GTK_WINDOW(window), "gallsh");
     gtk_window_set_default_size(GTK_WINDOW(window), 1000, 1000);
@@ -69,9 +73,9 @@ int read_filenames(char **entries, char *dirname) {
     return count;
 }
 
-char *random_filename(char **entries, int count) {
-    int selected = rand() % count;
-    return entries[selected];
+char *random_filename(char **entries, int count, int *selected) {
+    *selected = rand() % count;
+    return entries[*selected];
 }
 void destroy_filenames(char **entries, int count) {
     for(int i=0; i < count; i++) {
