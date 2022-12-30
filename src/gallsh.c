@@ -16,9 +16,11 @@ char Image_Directory[4096] = "images/";
 
 typedef struct user_data {
     char **filenames;
+    int *times_viewed;
     char *selected_filename;
     int count;
     int selected;
+    int views;
     GtkImage *image;
     GApplication *application;
 
@@ -69,18 +71,29 @@ void destroy_filenames(char **entries, int count) {
 
 void select_random(USER_DATA *data) {
     int old = data->selected;
+    int search = true;
     if(data->count > 1)
         do{
+            search = true;
             data->selected = rand() % data->count;
-        }while(data->selected == old);
+            g_print("selecting %d\n", data->selected);
+            if(data->selected != old 
+                    && (data->times_viewed[data->selected] == 0 
+                    || data->views >= data->count)) 
+                search = false;
+                if(search)
+                g_print("repeating, reselect\n");
+        }while(search);
     else
         data->selected = 0;
     data->selected_filename = data->filenames[data->selected];
+    data->times_viewed[data->selected]++;
+    data->views++;
+    g_print("%d\t%d\t%d\t%s\n", data->views, data->selected, data->times_viewed[data->selected], data->selected_filename);
 }
 
 void select_random_image(USER_DATA *data) {
     select_random(data);
-    g_print("%d:%s\n", data->selected, data->selected_filename);
     gtk_image_set_from_file(data->image, data->selected_filename);
     gtk_widget_queue_draw (GTK_WIDGET(gtk_widget_get_parent(GTK_WIDGET(data->image))));
 }
@@ -144,12 +157,15 @@ int main(int argc, char **argv) {
     srand(time(NULL));
     USER_DATA *data = (USER_DATA *)malloc(sizeof(USER_DATA));
     data->count = count_directory_entries(Image_Directory);
+    data->views = 0;
     if(data->count == 0) {
         fprintf(stderr, "no file found in the directory %s\n", Image_Directory);
         return 1;
     }
     g_print("%d images in the directorny\n", data->count);
     data->filenames = (char **)malloc(sizeof(char *) * data->count);
+    data->times_viewed = (int *)malloc(sizeof(int) * data->count);
+    for(int i=0; i < data->count; data->times_viewed[i++] = 0);
     read_filenames(data->filenames, Image_Directory);
     app = gtk_application_new(NULL, G_APPLICATION_DEFAULT_FLAGS);
 
