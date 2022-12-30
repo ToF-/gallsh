@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <assert.h>
+#include <stdbool.h>
 
 #ifdef __linux__
 #ifndef G_APPLICATION_DEFAULT_FLAGS
@@ -21,6 +22,7 @@ typedef struct user_data {
     int count;
     int selected;
     int views;
+    bool random;
     GtkImage *image;
     GApplication *application;
 
@@ -45,6 +47,10 @@ int count_directory_entries(char *dirname) {
     return count;
 }
 
+int compare(const void *a, const void *b) {
+    return strcmp(*(const char **)a, *(const char **)b);
+}
+
 int read_filenames(char **entries, char *dirname) {
     DIR *directory;
     struct dirent *entry;
@@ -60,6 +66,7 @@ int read_filenames(char **entries, char *dirname) {
             }
         closedir(directory);
     }
+    qsort(entries, count, sizeof(const char *), compare);
     return count;
 }
 
@@ -71,6 +78,7 @@ void destroy_filenames(char **entries, int count) {
 
 void select_random(USER_DATA *data) {
     int old = data->selected;
+    if(data->random) {
     int search = true;
     if(data->count > 1)
         do{
@@ -86,6 +94,9 @@ void select_random(USER_DATA *data) {
         }while(search);
     else
         data->selected = 0;
+    }
+    else
+        data->selected = data->views % data->count;
     data->selected_filename = data->filenames[data->selected];
     data->times_viewed[data->selected]++;
     data->views++;
@@ -155,9 +166,15 @@ int main(int argc, char **argv) {
     int status;
     get_image_directory();
     srand(time(NULL));
+    gtk_init();
     USER_DATA *data = (USER_DATA *)malloc(sizeof(USER_DATA));
     data->count = count_directory_entries(Image_Directory);
     data->views = 0;
+    if(argc>1 && !strcmp(argv[1], "no-random"))
+        data->random = false;
+    else
+        data->random = true;
+
     if(data->count == 0) {
         fprintf(stderr, "no file found in the directory %s\n", Image_Directory);
         return 1;
@@ -170,7 +187,7 @@ int main(int argc, char **argv) {
     app = gtk_application_new(NULL, G_APPLICATION_DEFAULT_FLAGS);
 
     g_signal_connect(app, "activate", G_CALLBACK(app_activate), data);
-    status = g_application_run(G_APPLICATION(app), argc, argv);
+    status = g_application_run(G_APPLICATION(app), 0, NULL);
     g_object_unref(app);
     destroy_filenames(data->filenames, data->count);
     free(data);
