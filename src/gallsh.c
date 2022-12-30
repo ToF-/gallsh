@@ -1,14 +1,18 @@
 #include <gtk/gtk.h>
 #include <stdio.h>
+#include <wordexp.h>
 #include <dirent.h>
 #include <stdlib.h>
 #include <time.h>
+#include <assert.h>
 
 #ifdef __linux__
 #ifndef G_APPLICATION_DEFAULT_FLAGS
 #define G_APPLICATION_DEFAULT_FLAGS (G_APPLICATION_FLAGS_NONE)
 #endif
 #endif
+
+char Image_Directory[4096] = "images/";
 
 typedef struct user_data {
     char **filenames;
@@ -118,18 +122,34 @@ static void app_activate(GApplication *app, gpointer *user_data) {
     gtk_widget_show(window);
 }
 
+void get_image_directory() {
+    char *value = getenv("GALLSHDIR");
+    wordexp_t exp_result;
+    if(value != NULL) {
+        strcpy(Image_Directory, value);
+        int l = strlen(Image_Directory);
+        if(Image_Directory[l-1] != '/')
+            strcat(Image_Directory, "/");
+        wordexp(Image_Directory, &exp_result, 0);
+        strcpy(Image_Directory, exp_result.we_wordv[0]);
+    } else 
+        printf("variable GALLSHDIR not found\n");
+    printf("%s is image directory\n", Image_Directory);
+}
+
 int main(int argc, char **argv) {
     GtkApplication *app;
     int status;
+    get_image_directory();
     srand(time(NULL));
     USER_DATA *data = (USER_DATA *)malloc(sizeof(USER_DATA));
-    data->count = count_directory_entries("images/");
+    data->count = count_directory_entries(Image_Directory);
     if(data->count == 0) {
-        fprintf(stderr, "no file found in the directory images\n");
+        fprintf(stderr, "no file found in the directory %s\n", Image_Directory);
         return 1;
     }
     data->filenames = (char **)malloc(sizeof(char *) * data->count);
-    read_filenames(data->filenames, "images/");
+    read_filenames(data->filenames, Image_Directory);
     app = gtk_application_new(NULL, G_APPLICATION_DEFAULT_FLAGS);
 
     g_signal_connect(app, "activate", G_CALLBACK(app_activate), data);
