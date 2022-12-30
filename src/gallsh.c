@@ -148,6 +148,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "no file found in the directory %s\n", Image_Directory);
         return 1;
     }
+    g_print("%d images in the directorny\n", data->count);
     data->filenames = (char **)malloc(sizeof(char *) * data->count);
     read_filenames(data->filenames, Image_Directory);
     app = gtk_application_new(NULL, G_APPLICATION_DEFAULT_FLAGS);
