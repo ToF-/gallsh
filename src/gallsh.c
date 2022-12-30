@@ -65,9 +65,12 @@ void destroy_filenames(char **entries, int count) {
 
 void select_random(USER_DATA *data) {
     int old = data->selected;
-    do{
-        data->selected = rand() % data->count;
-    }while(data->selected == old);
+    if(data->count > 1)
+        do{
+            data->selected = rand() % data->count;
+        }while(data->selected == old);
+    else
+        data->selected = 0;
     data->selected_filename = data->filenames[data->selected];
 }
 
@@ -121,6 +124,10 @@ int main(int argc, char **argv) {
     srand(time(NULL));
     USER_DATA *data = (USER_DATA *)malloc(sizeof(USER_DATA));
     data->count = count_directory_entries("images/");
+    if(data->count == 0) {
+        fprintf(stderr, "no file found in the directory images\n");
+        return 1;
+    }
     data->filenames = (char **)malloc(sizeof(char *) * data->count);
     read_filenames(data->filenames, "images/");
     app = gtk_application_new(NULL, G_APPLICATION_DEFAULT_FLAGS);
