@@ -3,3 +3,6 @@ gallsh:
 
 clean:
 	rm bin/gallsh
+
+install:
+	cp bin/gallsh ~/.local/bin

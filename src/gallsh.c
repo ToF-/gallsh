@@ -23,6 +23,7 @@ typedef struct user_data {
     int selected;
     int views;
     bool random;
+    bool maximized;
     GtkImage *image;
     GApplication *application;
 
@@ -76,45 +77,60 @@ void destroy_filenames(char **entries, int count) {
     }
 }
 
-void select_random(USER_DATA *data) {
-    int old = data->selected;
-    if(data->random) {
-    int search = true;
-    if(data->count > 1)
-        do{
-            search = true;
-            data->selected = rand() % data->count;
-            g_print("selecting %d\n", data->selected);
-            if(data->selected != old 
-                    && (data->times_viewed[data->selected] == 0 
-                    || data->views >= data->count)) 
-                search = false;
-                if(search)
-                g_print("repeating, reselect\n");
-        }while(search);
-    else
+void select_next_image(USER_DATA *data) {
+    if(!data->count)
+        return;
+    data->selected++;
+    if(data->selected == data->count)
         data->selected = 0;
-    }
-    else
-        data->selected = data->views % data->count;
+}
+
+void select_prev_image(USER_DATA *data) {
+    if(!data->count)
+        return;
+    data->selected--;
+    if(data->selected < 0)
+        data->selected = data->count-1;;
+}
+void select_random_image(USER_DATA *data) {
+    if(!data->count)
+        return;
+    int old = data->selected;
+    int search = true;
+    do{
+        search = true;
+        data->selected = rand() % data->count;
+        g_print("selecting %d\n", data->selected);
+        if(data->selected != old 
+                && (data->times_viewed[data->selected] == 0 
+                    || data->views >= data->count)) 
+            search = false;
+        if(search)
+            g_print("repeating, reselect\n");
+    }while(search);
+}
+
+void load_image(USER_DATA *data) {
     data->selected_filename = data->filenames[data->selected];
     data->times_viewed[data->selected]++;
     data->views++;
     g_print("%d\t%d\t%d\t%s\n", data->views, data->selected, data->times_viewed[data->selected], data->selected_filename);
-}
-
-void select_random_image(USER_DATA *data) {
-    select_random(data);
     gtk_image_set_from_file(data->image, data->selected_filename);
     gtk_widget_queue_draw (GTK_WIDGET(gtk_widget_get_parent(GTK_WIDGET(data->image))));
 }
 
 gboolean key_pressed ( GtkEventControllerKey* self, guint keyval, guint keycode, GdkModifierType* state, gpointer user_data) {
     USER_DATA *data = (USER_DATA *)user_data;
+    printf("%c\n", keyval);
     if(keyval == 'q')
         g_application_quit(data->application);
-    else if(keyval == ' ')
+    else if(data->random && keyval == ' ' || keyval == 'r')
         select_random_image(data);
+    else if(keyval == 'n' || keyval == ' ')
+        select_next_image(data);
+    else if(keyval == 'p')
+        select_prev_image(data);
+    load_image(data);
     return true;
 }
 static void app_activate(GApplication *app, gpointer *user_data) {
@@ -139,10 +155,13 @@ static void app_activate(GApplication *app, gpointer *user_data) {
     gtk_widget_add_controller(window, event_controller);
     gtk_window_set_child(GTK_WINDOW(window), GTK_WIDGET(image));
     gtk_window_set_title(GTK_WINDOW(window), "gallsh");
-    gtk_window_set_decorated(GTK_WINDOW(window), false);
+    gtk_window_set_decorated(GTK_WINDOW(window), true);
     gtk_window_set_default_size(GTK_WINDOW(window), 1000, 1000);
-
+    gtk_window_set_resizable(GTK_WINDOW(window), true);
     select_random_image(data);
+    load_image(data);
+    if(data->maximized)
+        gtk_window_maximize(GTK_WINDOW(window));
     gtk_widget_show(window);
 }
 
@@ -170,16 +189,19 @@ int main(int argc, char **argv) {
     USER_DATA *data = (USER_DATA *)malloc(sizeof(USER_DATA));
     data->count = count_directory_entries(Image_Directory);
     data->views = 0;
-    if(argc>1 && !strcmp(argv[1], "no-random"))
-        data->random = false;
-    else
-        data->random = true;
-
+    data->random = true;
+    data->maximized = false;
+    for(int i=1; i<argc; i++) {
+        if(!strcmp(argv[i], "no-random"))
+            data->random = false;
+        else if(!strcmp(argv[i], "maximized"))
+            data->maximized = true;
+    }
     if(data->count == 0) {
         fprintf(stderr, "no file found in the directory %s\n", Image_Directory);
         return 1;
     }
-    g_print("%d images in the directorny\n", data->count);
+    g_print("%d images in the directory\n", data->count);
     data->filenames = (char **)malloc(sizeof(char *) * data->count);
     data->times_viewed = (int *)malloc(sizeof(int) * data->count);
     for(int i=0; i < data->count; data->times_viewed[i++] = 0);
