@@ -110,6 +110,20 @@ void select_random_image(USER_DATA *data) {
     }while(search);
 }
 
+int select_image_from_pattern(USER_DATA *data, char *pattern) {
+    printf("looking for filename with pattern %s\n", pattern);
+    if(!data->count)
+        return -1;
+    for(int i=0; i<data->count; i++) {
+        if(strstr(data->filenames[i], pattern)) {
+            printf("found file for pattern %s:%s\n", pattern, data->filenames[i]);
+            data->selected = i;
+            return i;
+        }
+    }
+    return -1;
+}
+
 void load_image(USER_DATA *data) {
     data->selected_filename = data->filenames[data->selected];
     data->times_viewed[data->selected]++;
@@ -158,7 +172,6 @@ static void app_activate(GApplication *app, gpointer *user_data) {
     gtk_window_set_decorated(GTK_WINDOW(window), true);
     gtk_window_set_default_size(GTK_WINDOW(window), 1000, 1000);
     gtk_window_set_resizable(GTK_WINDOW(window), true);
-    select_random_image(data);
     load_image(data);
     if(data->maximized)
         gtk_window_maximize(GTK_WINDOW(window));
@@ -191,11 +204,16 @@ int main(int argc, char **argv) {
     data->views = 0;
     data->random = true;
     data->maximized = false;
+    char *pattern = NULL;
     for(int i=1; i<argc; i++) {
         if(!strcmp(argv[i], "no-random"))
             data->random = false;
         else if(!strcmp(argv[i], "maximized"))
             data->maximized = true;
+        else {
+            pattern = argv[i];
+            printf("pattern = %s\n", pattern); 
+        }
     }
     if(data->count == 0) {
         fprintf(stderr, "no file found in the directory %s\n", Image_Directory);
@@ -206,6 +224,10 @@ int main(int argc, char **argv) {
     data->times_viewed = (int *)malloc(sizeof(int) * data->count);
     for(int i=0; i < data->count; data->times_viewed[i++] = 0);
     read_filenames(data->filenames, Image_Directory);
+    if(pattern == NULL || select_image_from_pattern(data, pattern) == -1) 
+    {
+        select_random_image(data);
+    }
     app = gtk_application_new(NULL, G_APPLICATION_DEFAULT_FLAGS);
 
     g_signal_connect(app, "activate", G_CALLBACK(app_activate), data);
