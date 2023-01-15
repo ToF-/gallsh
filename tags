@@ -11,7 +11,7 @@ app_activate	src/gallsh.c	/^static void app_activate(GApplication *app, gpointer
 application	src/gallsh.c	/^    GApplication *application;$/;"	m	struct:user_data	file:
 compare	src/gallsh.c	/^int compare(const void *a, const void *b) {$/;"	f
 count	src/gallsh.c	/^    int count;$/;"	m	struct:user_data	file:
-count_directory_entries	src/gallsh.c	/^int count_directory_entries(char *dirname) {$/;"	f
+count_directory_entries	src/gallsh.c	/^int count_directory_entries(char *dirname, char *pattern) {$/;"	f
 destroy_filenames	src/gallsh.c	/^void destroy_filenames(char **entries, int count) {$/;"	f
 filenames	src/gallsh.c	/^    char **filenames;$/;"	m	struct:user_data	file:
 get_image_directory	src/gallsh.c	/^void get_image_directory() {$/;"	f
@@ -21,8 +21,7 @@ load_image	src/gallsh.c	/^void load_image(USER_DATA *data) {$/;"	f
 main	src/gallsh.c	/^int main(int argc, char **argv) {$/;"	f
 maximized	src/gallsh.c	/^    bool maximized;$/;"	m	struct:user_data	file:
 random	src/gallsh.c	/^    bool random;$/;"	m	struct:user_data	file:
-read_filenames	src/gallsh.c	/^int read_filenames(char **entries, char *dirname) {$/;"	f
-select_image_from_pattern	src/gallsh.c	/^int select_image_from_pattern(USER_DATA *data, char *pattern) {$/;"	f
+read_filenames	src/gallsh.c	/^int read_filenames(char **entries, char *dirname, char *pattern) {$/;"	f
 select_next_image	src/gallsh.c	/^void select_next_image(USER_DATA *data) {$/;"	f
 select_prev_image	src/gallsh.c	/^void select_prev_image(USER_DATA *data) {$/;"	f
 select_random_image	src/gallsh.c	/^void select_random_image(USER_DATA *data) {$/;"	f

@@ -29,12 +29,15 @@ typedef struct user_data {
 
 } USER_DATA;
 
-int count_directory_entries(char *dirname);
-int read_filenames(char **entries, char *dirname);
+int count_directory_entries(char *dirname, char *pattern);
+int read_filenames(char **entries, char *dirname, char *pattern);
 char *random_filename(char **entries, int count, int *selected);
 void destroy_filenames(char **entries, int count);
 
-int count_directory_entries(char *dirname) {
+int count_directory_entries(char *dirname, char *pattern) {
+    printf("counting entries ");
+    if(pattern != NULL)
+        printf("with pattern %s ",pattern);
     DIR *directory;
     struct dirent *entry;
     directory = opendir(dirname);
@@ -42,9 +45,11 @@ int count_directory_entries(char *dirname) {
     if(directory) {
         while((entry = readdir(directory)) != NULL)
             if(entry->d_name[0] != '.')
-                count++;
+                if(!pattern || (strstr(entry->d_name, pattern)))
+                    count++;
         closedir(directory);
     }
+    printf("%d\n", count);
     return count;
 }
 
@@ -52,7 +57,7 @@ int compare(const void *a, const void *b) {
     return strcmp(*(const char **)a, *(const char **)b);
 }
 
-int read_filenames(char **entries, char *dirname) {
+int read_filenames(char **entries, char *dirname, char *pattern) {
     DIR *directory;
     struct dirent *entry;
     directory = opendir(dirname);
@@ -60,10 +65,13 @@ int read_filenames(char **entries, char *dirname) {
     if(directory) {
         while((entry = readdir(directory)) != NULL)
             if(entry->d_name[0] != '.') {
-                char *entry_name = (char *)malloc(strlen(dirname) + strlen(entry->d_name) + 1);
-                strcpy(entry_name, dirname);
-                strcat(entry_name, entry->d_name);
-                entries[count++] = entry_name;
+                if(!pattern || strstr(entry->d_name, pattern)) {
+                    char *entry_name = (char *)malloc(strlen(dirname) + strlen(entry->d_name) + 1);
+                    strcpy(entry_name, dirname);
+                    strcat(entry_name, entry->d_name);
+                    entries[count++] = entry_name;
+                    printf("getting %s\n", entries[count-1]);
+                }
             }
         closedir(directory);
     }
@@ -110,32 +118,18 @@ void select_random_image(USER_DATA *data) {
     }while(search);
 }
 
-int select_image_from_pattern(USER_DATA *data, char *pattern) {
-    printf("looking for filename with pattern %s\n", pattern);
-    if(!data->count)
-        return -1;
-    for(int i=0; i<data->count; i++) {
-        if(strstr(data->filenames[i], pattern)) {
-            printf("found file for pattern %s:%s\n", pattern, data->filenames[i]);
-            data->selected = i;
-            return i;
-        }
-    }
-    return -1;
-}
-
 void load_image(USER_DATA *data) {
     data->selected_filename = data->filenames[data->selected];
     data->times_viewed[data->selected]++;
     data->views++;
     g_print("%d\t%d\t%d\t%s\n", data->views, data->selected, data->times_viewed[data->selected], data->selected_filename);
+    assert(data->selected_filename);
     gtk_image_set_from_file(data->image, data->selected_filename);
     gtk_widget_queue_draw (GTK_WIDGET(gtk_widget_get_parent(GTK_WIDGET(data->image))));
 }
 
 gboolean key_pressed ( GtkEventControllerKey* self, guint keyval, guint keycode, GdkModifierType* state, gpointer user_data) {
     USER_DATA *data = (USER_DATA *)user_data;
-    printf("%c\n", keyval);
     if(keyval == 'q')
         g_application_quit(data->application);
     else if(data->random && keyval == ' ' || keyval == 'r')
@@ -199,35 +193,47 @@ int main(int argc, char **argv) {
     get_image_directory();
     srand(time(NULL));
     gtk_init();
+    char *pattern = NULL;
     USER_DATA *data = (USER_DATA *)malloc(sizeof(USER_DATA));
-    data->count = count_directory_entries(Image_Directory);
     data->views = 0;
     data->random = true;
     data->maximized = false;
-    char *pattern = NULL;
     for(int i=1; i<argc; i++) {
         if(!strcmp(argv[i], "no-random"))
             data->random = false;
         else if(!strcmp(argv[i], "maximized"))
             data->maximized = true;
+        else if(!strcmp(argv[i], "pattern")) {
+            if(argc < (i+1)) {
+                fprintf(stderr, "usage: gallsh pattern <pattern>\n");
+                exit(1);
+            }
+            pattern = strdup(argv[i+1]);
+            break;
+        }
         else {
-            pattern = argv[i];
-            printf("pattern = %s\n", pattern); 
+            fprintf(stderr, "%s ?\n", argv[i]);
+            exit(1);
         }
     }
+    data->count = count_directory_entries(Image_Directory, pattern);
     if(data->count == 0) {
-        fprintf(stderr, "no file found in the directory %s\n", Image_Directory);
+        if(pattern)
+            fprintf(stderr, "no file found in the directory %s for pattern %s\n", Image_Directory, pattern);
+        else
+            fprintf(stderr, "no file found in the directory %s\n", Image_Directory);
         return 1;
     }
-    g_print("%d images in the directory\n", data->count);
+    if(pattern)
+        g_print("%d images in the directory for pattern %s\n", data->count, pattern);
+    else
+        g_print("%d images in the directory\n", data->count);
+
     data->filenames = (char **)malloc(sizeof(char *) * data->count);
     data->times_viewed = (int *)malloc(sizeof(int) * data->count);
     for(int i=0; i < data->count; data->times_viewed[i++] = 0);
-    read_filenames(data->filenames, Image_Directory);
-    if(pattern == NULL || select_image_from_pattern(data, pattern) == -1) 
-    {
-        select_random_image(data);
-    }
+    int count = read_filenames(data->filenames, Image_Directory, pattern);
+    assert(count == data->count);
     app = gtk_application_new(NULL, G_APPLICATION_DEFAULT_FLAGS);
 
     g_signal_connect(app, "activate", G_CALLBACK(app_activate), data);
@@ -235,5 +241,7 @@ int main(int argc, char **argv) {
     g_object_unref(app);
     destroy_filenames(data->filenames, data->count);
     free(data);
+    if(pattern)
+        free(pattern);
     return status;
 }

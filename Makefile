@@ -6,3 +6,5 @@ clean:
 
 install: gallsh
 	cp bin/gallsh ~/.local/bin
+
+	
