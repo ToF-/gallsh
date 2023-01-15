@@ -17,11 +17,14 @@ filenames	src/gallsh.c	/^    char **filenames;$/;"	m	struct:user_data	file:
 get_image_directory	src/gallsh.c	/^void get_image_directory() {$/;"	f
 image	src/gallsh.c	/^    GtkImage *image;$/;"	m	struct:user_data	file:
 key_pressed	src/gallsh.c	/^gboolean key_pressed ( GtkEventControllerKey* self, guint keyval, guint keycode, GdkModifierType* state, gpointer user_data) {$/;"	f
+load_image	src/gallsh.c	/^void load_image(USER_DATA *data) {$/;"	f
 main	src/gallsh.c	/^int main(int argc, char **argv) {$/;"	f
 maximized	src/gallsh.c	/^    bool maximized;$/;"	m	struct:user_data	file:
 random	src/gallsh.c	/^    bool random;$/;"	m	struct:user_data	file:
 read_filenames	src/gallsh.c	/^int read_filenames(char **entries, char *dirname) {$/;"	f
-select_random	src/gallsh.c	/^void select_random(USER_DATA *data) {$/;"	f
+select_image_from_pattern	src/gallsh.c	/^int select_image_from_pattern(USER_DATA *data, char *pattern) {$/;"	f
+select_next_image	src/gallsh.c	/^void select_next_image(USER_DATA *data) {$/;"	f
+select_prev_image	src/gallsh.c	/^void select_prev_image(USER_DATA *data) {$/;"	f
 select_random_image	src/gallsh.c	/^void select_random_image(USER_DATA *data) {$/;"	f
 selected	src/gallsh.c	/^    int selected;$/;"	m	struct:user_data	file:
 selected_filename	src/gallsh.c	/^    char *selected_filename;$/;"	m	struct:user_data	file:

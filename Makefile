@@ -4,5 +4,5 @@ gallsh:
 clean:
 	rm bin/gallsh
 
-install:
+install: gallsh
 	cp bin/gallsh ~/.local/bin
