@@ -69,8 +69,9 @@ int read_filenames(char **entries, char *dirname, char *pattern) {
                     char *entry_name = (char *)malloc(strlen(dirname) + strlen(entry->d_name) + 1);
                     strcpy(entry_name, dirname);
                     strcat(entry_name, entry->d_name);
-                    entries[count++] = entry_name;
-                    printf("getting %s\n", entries[count-1]);
+                    entries[count] = entry_name;
+                    printf("%d %s\n", count, entries[count]);
+                    count++;
                 }
             }
         closedir(directory);
@@ -234,8 +235,8 @@ int main(int argc, char **argv) {
     for(int i=0; i < data->count; data->times_viewed[i++] = 0);
     int count = read_filenames(data->filenames, Image_Directory, pattern);
     assert(count == data->count);
+    select_random_image(data);
     app = gtk_application_new(NULL, G_APPLICATION_DEFAULT_FLAGS);
-
     g_signal_connect(app, "activate", G_CALLBACK(app_activate), data);
     status = g_application_run(G_APPLICATION(app), 0, NULL);
     g_object_unref(app);
