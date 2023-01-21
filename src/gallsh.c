@@ -104,6 +104,10 @@ void select_prev_image(USER_DATA *data) {
 void select_random_image(USER_DATA *data) {
     if(!data->count)
         return;
+    if(data->count == 1) {
+        data->selected = 0;
+        return;
+    }
     int old = data->selected;
     int search = true;
     do{
