@@ -204,21 +204,13 @@ int main(int argc, char **argv) {
     data->random = true;
     data->maximized = false;
     for(int i=1; i<argc; i++) {
-        if(!strcmp(argv[i], "no-random"))
+        if(!strcmp(argv[i], "-r"))
             data->random = false;
-        else if(!strcmp(argv[i], "maximized"))
+        else if(!strcmp(argv[i], "-m"))
             data->maximized = true;
-        else if(!strcmp(argv[i], "pattern")) {
-            if(argc < (i+1)) {
-                fprintf(stderr, "usage: gallsh pattern <pattern>\n");
-                exit(1);
-            }
-            pattern = strdup(argv[i+1]);
-            break;
-        }
         else {
-            fprintf(stderr, "%s ?\n", argv[i]);
-            exit(1);
+            pattern = strdup(argv[i]);
+            break;
         }
     }
     data->count = count_directory_entries(Image_Directory, pattern);
