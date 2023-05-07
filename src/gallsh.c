@@ -130,7 +130,9 @@ void load_image(USER_DATA *data) {
     g_print("%d\t%d\t%d\t%s\n", data->views, data->selected, data->times_viewed[data->selected], data->selected_filename);
     assert(data->selected_filename);
     gtk_image_set_from_file(data->image, data->selected_filename);
+
     gtk_widget_queue_draw (GTK_WIDGET(gtk_widget_get_parent(GTK_WIDGET(data->image))));
+    gtk_window_set_title(GTK_WINDOW(gtk_application_get_active_window(data->application)), data->selected_filename);
 }
 
 gboolean key_pressed ( GtkEventControllerKey* self, guint keyval, guint keycode, GdkModifierType* state, gpointer user_data) {
@@ -242,3 +244,4 @@ int main(int argc, char **argv) {
         free(pattern);
     return status;
 }
+
