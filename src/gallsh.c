@@ -179,8 +179,8 @@ static void app_activate(GApplication *app, gpointer *user_data) {
     gtk_widget_show(window);
 }
 
-void get_image_directory() {
-    char *value = getenv("GALLSHDIR");
+void get_image_directory(char *filepath) {
+    char *value = filepath ? filepath : getenv("GALLSHDIR");
     wordexp_t exp_result;
     if(value != NULL) {
         strcpy(Image_Directory, value);
@@ -197,7 +197,7 @@ void get_image_directory() {
 int main(int argc, char **argv) {
     GtkApplication *app;
     int status;
-    get_image_directory();
+    char *image_directory = NULL;
     srand(time(NULL));
     gtk_init();
     char *pattern = NULL;
@@ -208,13 +208,30 @@ int main(int argc, char **argv) {
     for(int i=1; i<argc; i++) {
         if(!strcmp(argv[i], "-r"))
             data->random = false;
+        if(!strcmp(argv[i], "-a")) {
+            if(i < (argc-1)) {
+                image_directory = argv[i+1];
+                i++;
+            }
+            else {
+                printf("usage : gallsh -a <directory>\n");
+                exit(1);
+            }
+        }
+
         else if(!strcmp(argv[i], "-m"))
             data->maximized = true;
+        else if(!strcmp(argv[i], "-h")) {
+            printf("gallsh [pattern]\n\t-r // no random\n\t-m  // maximized\n");
+            free(data);
+            exit(0);
+        }
         else {
             pattern = strdup(argv[i]);
             break;
         }
     }
+    get_image_directory(image_directory);
     data->count = count_directory_entries(Image_Directory, pattern);
     if(data->count == 0) {
         if(pattern)
