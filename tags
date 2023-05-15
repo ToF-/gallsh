@@ -4,3 +4,34 @@
 !_TAG_PROGRAM_NAME	Exuberant Ctags	//
 !_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
 !_TAG_PROGRAM_VERSION	5.8	//
+G_APPLICATION_DEFAULT_FLAGS	src/gallsh.c	/^#define G_APPLICATION_DEFAULT_FLAGS /;"	d	file:
+Image_Directory	src/gallsh.c	/^char Image_Directory[4096] = "images\/";$/;"	v
+USER_DATA	src/gallsh.c	/^} USER_DATA;$/;"	t	typeref:struct:user_data	file:
+app_activate	src/gallsh.c	/^static void app_activate(GApplication *app, gpointer p) {$/;"	f	file:
+application	src/gallsh.c	/^    GApplication *application;$/;"	m	struct:user_data	file:
+compare	src/gallsh.c	/^int compare(const void *a, const void *b) {$/;"	f
+count	src/gallsh.c	/^    int count;$/;"	m	struct:user_data	file:
+count_directory_entries	src/gallsh.c	/^int count_directory_entries(char *dirname, char *pattern) {$/;"	f
+destroy_filenames	src/gallsh.c	/^void destroy_filenames(char **entries, int count) {$/;"	f
+directory	src/gallsh.c	/^    char *directory;$/;"	m	struct:user_data	file:
+filenames	src/gallsh.c	/^    char **filenames;$/;"	m	struct:user_data	file:
+free_user_data	src/gallsh.c	/^void free_user_data(USER_DATA *ud) {$/;"	f
+get_image_directory	src/gallsh.c	/^void get_image_directory(char *filepath) {$/;"	f
+image	src/gallsh.c	/^    GtkImage *image;$/;"	m	struct:user_data	file:
+key_pressed	src/gallsh.c	/^gboolean key_pressed ( GtkEventControllerKey* self, guint keyval, guint keycode, GdkModifierType* state, gpointer p) {$/;"	f
+load_image	src/gallsh.c	/^void load_image(USER_DATA *ud) {$/;"	f
+main	src/gallsh.c	/^int main(int argc, char **argv) {$/;"	f
+maximized	src/gallsh.c	/^    bool maximized;$/;"	m	struct:user_data	file:
+new_user_data	src/gallsh.c	/^USER_DATA *new_user_data() {$/;"	f
+pattern	src/gallsh.c	/^    char *pattern;$/;"	m	struct:user_data	file:
+random	src/gallsh.c	/^    bool random;$/;"	m	struct:user_data	file:
+read_filenames	src/gallsh.c	/^int read_filenames(char **entries, char *dirname, char *pattern) {$/;"	f
+select_next_image	src/gallsh.c	/^void select_next_image(USER_DATA *ud) {$/;"	f
+select_prev_image	src/gallsh.c	/^void select_prev_image(USER_DATA *ud) {$/;"	f
+select_random_image	src/gallsh.c	/^void select_random_image(USER_DATA *ud) {$/;"	f
+selected	src/gallsh.c	/^    int selected;$/;"	m	struct:user_data	file:
+selected_filename	src/gallsh.c	/^    char *selected_filename;$/;"	m	struct:user_data	file:
+times_viewed	src/gallsh.c	/^    int *times_viewed;$/;"	m	struct:user_data	file:
+user_data	src/gallsh.c	/^typedef struct user_data {$/;"	s	file:
+valid_command	src/gallsh.c	/^bool valid_command(char c) {$/;"	f
+views	src/gallsh.c	/^    int views;$/;"	m	struct:user_data	file:

@@ -38,9 +38,9 @@ void destroy_filenames(char **entries, int count);
 
 int count_directory_entries(char *dirname, char *pattern) {
     printf("counting entries ");
+    DIR *directory;
     if(pattern != NULL)
         printf("with pattern %s ",pattern);
-    DIR *directory;
     struct dirent *entry;
     directory = opendir(dirname);
     int count = 0;
@@ -72,7 +72,7 @@ int read_filenames(char **entries, char *dirname, char *pattern) {
                     strcpy(entry_name, dirname);
                     strcat(entry_name, entry->d_name);
                     entries[count] = entry_name;
-                    printf("%d %s\n", count, entries[count]);
+                    // printf("%d %s\n", count, entries[count]);
                     count++;
                 }
             }
@@ -177,7 +177,13 @@ static void app_activate(GApplication *app, gpointer p) {
     gtk_window_set_resizable(GTK_WINDOW(window), true);
     load_image(ud);
     if(ud->maximized)
-        gtk_window_maximize(GTK_WINDOW(window));
+    {
+        int width;
+        int height;
+        gtk_window_get_default_size(window, &width, &height);
+        printf("size: %d x %d \n", width, height);
+        gtk_window_fullscreen(window);
+    }
     gtk_widget_show(window);
 }
 
