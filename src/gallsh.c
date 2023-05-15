@@ -16,6 +16,8 @@
 char Image_Directory[4096] = "images/";
 
 typedef struct user_data {
+    char *directory;
+    char *pattern;
     char **filenames;
     int *times_viewed;
     char *selected_filename;
@@ -86,69 +88,69 @@ void destroy_filenames(char **entries, int count) {
     }
 }
 
-void select_next_image(USER_DATA *data) {
-    if(!data->count)
+void select_next_image(USER_DATA *ud) {
+    if(!ud->count)
         return;
-    data->selected++;
-    if(data->selected == data->count)
-        data->selected = 0;
+    ud->selected++;
+    if(ud->selected == ud->count)
+        ud->selected = 0;
 }
 
-void select_prev_image(USER_DATA *data) {
-    if(!data->count)
+void select_prev_image(USER_DATA *ud) {
+    if(!ud->count)
         return;
-    data->selected--;
-    if(data->selected < 0)
-        data->selected = data->count-1;;
+    ud->selected--;
+    if(ud->selected < 0)
+        ud->selected = ud->count-1;;
 }
-void select_random_image(USER_DATA *data) {
-    if(!data->count)
+void select_random_image(USER_DATA *ud) {
+    if(!ud->count)
         return;
-    if(data->count == 1) {
-        data->selected = 0;
+    if(ud->count == 1) {
+        ud->selected = 0;
         return;
     }
-    int old = data->selected;
+    int old = ud->selected;
     int search = true;
     do{
         search = true;
-        data->selected = rand() % data->count;
-        g_print("selecting %d\n", data->selected);
-        if(data->selected != old 
-                && (data->times_viewed[data->selected] == 0 
-                    || data->views >= data->count)) 
+        ud->selected = rand() % ud->count;
+        g_print("selecting %d\n", ud->selected);
+        if(ud->selected != old 
+                && (ud->times_viewed[ud->selected] == 0 
+                    || ud->views >= ud->count)) 
             search = false;
         if(search)
             g_print("repeating, reselect\n");
     }while(search);
 }
 
-void load_image(USER_DATA *data) {
-    data->selected_filename = data->filenames[data->selected];
-    data->times_viewed[data->selected]++;
-    data->views++;
-    g_print("%d\t%d\t%d\t%s\n", data->views, data->selected, data->times_viewed[data->selected], data->selected_filename);
-    assert(data->selected_filename);
-    gtk_image_set_from_file(data->image, data->selected_filename);
+void load_image(USER_DATA *ud) {
+    ud->selected_filename = ud->filenames[ud->selected];
+    ud->times_viewed[ud->selected]++;
+    ud->views++;
+    g_print("%d\t%d\t%d\t%s\n", ud->views, ud->selected, ud->times_viewed[ud->selected], ud->selected_filename);
+    assert(ud->selected_filename);
+    gtk_image_set_from_file(ud->image, ud->selected_filename);
 
-    gtk_widget_queue_draw (GTK_WIDGET(gtk_widget_get_parent(GTK_WIDGET(data->image))));
-    gtk_window_set_title(GTK_WINDOW(gtk_application_get_active_window(data->application)), data->selected_filename);
+    gtk_widget_queue_draw (GTK_WIDGET(gtk_widget_get_parent(GTK_WIDGET(ud->image))));
+    gtk_window_set_title(GTK_WINDOW(gtk_application_get_active_window(ud->application)), ud->selected_filename);
 }
 
-gboolean key_pressed ( GtkEventControllerKey* self, guint keyval, guint keycode, GdkModifierType* state, gpointer user_data) {
-    USER_DATA *data = (USER_DATA *)user_data;
+gboolean key_pressed ( GtkEventControllerKey* self, guint keyval, guint keycode, GdkModifierType* state, gpointer p) {
+    USER_DATA *ud = (USER_DATA *)p;
     if(keyval == 'q')
-        g_application_quit(data->application);
-    else if(data->random && keyval == ' ' || keyval == 'r')
-        select_random_image(data);
+        g_application_quit(ud->application);
+    else if(ud->random && keyval == ' ' || keyval == 'r')
+        select_random_image(ud);
     else if(keyval == 'n' || keyval == ' ')
-        select_next_image(data);
+        select_next_image(ud);
     else if(keyval == 'p')
-        select_prev_image(data);
-    load_image(data);
+        select_prev_image(ud);
+    load_image(ud);
     return true;
 }
-static void app_activate(GApplication *app, gpointer *user_data) {
+static void app_activate(GApplication *app, gpointer p) {
     GtkWidget *window;
     GtkImage *image;
     GdkDisplay *display;
@@ -157,24 +159,24 @@ static void app_activate(GApplication *app, gpointer *user_data) {
 
     window  = gtk_application_window_new(GTK_APPLICATION(app));
     image   = GTK_IMAGE(gtk_image_new());
-    USER_DATA *data = (USER_DATA *)user_data;
-    data->application = app;
-    data->image = image;
+    USER_DATA *ud = (USER_DATA *)p;
+    ud->application = app;
+    ud->image = image;
     display = gtk_widget_get_display(GTK_WIDGET(window));
     css_provider = gtk_css_provider_new();
     gtk_css_provider_load_from_data(css_provider, "window { background-color:black; } image { margin:10em; }", -1);
     gtk_style_context_add_provider_for_display(display, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
     event_controller = gtk_event_controller_key_new();
-    g_signal_connect(event_controller, "key-pressed", G_CALLBACK(key_pressed), user_data);
+    g_signal_connect(event_controller, "key-pressed", G_CALLBACK(key_pressed), ud);
     gtk_widget_add_controller(window, event_controller);
     gtk_window_set_child(GTK_WINDOW(window), GTK_WIDGET(image));
     gtk_window_set_title(GTK_WINDOW(window), "gallsh");
     gtk_window_set_decorated(GTK_WINDOW(window), true);
     gtk_window_set_default_size(GTK_WINDOW(window), 1000, 1000);
     gtk_window_set_resizable(GTK_WINDOW(window), true);
-    load_image(data);
-    if(data->maximized)
+    load_image(ud);
+    if(ud->maximized)
         gtk_window_maximize(GTK_WINDOW(window));
     gtk_widget_show(window);
 }
@@ -194,20 +196,46 @@ void get_image_directory(char *filepath) {
     printf("%s is image directory\n", Image_Directory);
 }
 
+(USER_DATA *)new_user_data() {
+    USER_DATA *ud = (USER_DATA *)malloc(sizeof(USER_DATA));
+    ud->pattern = NULL;
+    ud->directory = NULL;
+    ud->views = 0;
+    ud->random = true;
+    ud->maximized = false;
+    return ud;
+}
+
+void free_user_data(USER_DATA *ud) {
+    if(ud->directory)
+        free(ud->directory);
+    if(ud->pattern)
+        free(ud->pattern);
+    for(int i=0; i < ud->count; i++)
+        free(ud->filenames[i];
+    free(ud);
+}
+
 int main(int argc, char **argv) {
     GtkApplication *app;
     int status;
-    char *image_directory = NULL;
     srand(time(NULL));
+    (USER_DATA *)ud = new_user_data();
     gtk_init();
-    char *pattern = NULL;
-    USER_DATA *data = (USER_DATA *)malloc(sizeof(USER_DATA));
-    data->views = 0;
-    data->random = true;
-    data->maximized = false;
     for(int i=1; i<argc; i++) {
+        if(strlen(argv[i] != 2 || argv[i][0] != '-' || (argv[i] != 'd' && argv[i] != 'p' && argv[i] != 'r' && argv[i] != 'm' && argv[i] != 'h') {
+            fprintf(stderr, "usage: gallsh -d <directory> -p <pattern> -r (no random) -m (maximized) -h (help)\n")
+                free_user_data(ud);
+                exit(1);
+        }
+        char option = argv[i][1];
+        switch option {
+        case 'd' :
+            i++;
+            if (i >= 
+
         if(!strcmp(argv[i], "-r"))
-            data->random = false;
+            ud->random = false;
         if(!strcmp(argv[i], "-a")) {
             if(i < (argc-1)) {
                 image_directory = argv[i+1];
@@ -220,10 +248,10 @@ int main(int argc, char **argv) {
         }
 
         else if(!strcmp(argv[i], "-m"))
-            data->maximized = true;
+            ud->maximized = true;
         else if(!strcmp(argv[i], "-h")) {
             printf("gallsh [pattern]\n\t-r // no random\n\t-m  // maximized\n");
-            free(data);
+            free(ud);
             exit(0);
         }
         else {
@@ -232,8 +260,8 @@ int main(int argc, char **argv) {
         }
     }
     get_image_directory(image_directory);
-    data->count = count_directory_entries(Image_Directory, pattern);
-    if(data->count == 0) {
+    ud->count = count_directory_entries(Image_Directory, pattern);
+    if(ud->count == 0) {
         if(pattern)
             fprintf(stderr, "no file found in the directory %s for pattern %s\n", Image_Directory, pattern);
         else
@@ -241,22 +269,22 @@ int main(int argc, char **argv) {
         return 1;
     }
     if(pattern)
-        g_print("%d images in the directory for pattern %s\n", data->count, pattern);
+        g_print("%d images in the directory for pattern %s\n", ud->count, pattern);
     else
-        g_print("%d images in the directory\n", data->count);
+        g_print("%d images in the directory\n", ud->count);
 
-    data->filenames = (char **)malloc(sizeof(char *) * data->count);
-    data->times_viewed = (int *)malloc(sizeof(int) * data->count);
-    for(int i=0; i < data->count; data->times_viewed[i++] = 0);
-    int count = read_filenames(data->filenames, Image_Directory, pattern);
-    assert(count == data->count);
-    select_random_image(data);
+    ud->filenames = (char **)malloc(sizeof(char *) * ud->count);
+    ud->times_viewed = (int *)malloc(sizeof(int) * ud->count);
+    for(int i=0; i < ud->count; ud->times_viewed[i++] = 0);
+    int count = read_filenames(ud->filenames, Image_Directory, pattern);
+    assert(count == ud->count);
+    select_random_image(ud);
     app = gtk_application_new(NULL, G_APPLICATION_DEFAULT_FLAGS);
-    g_signal_connect(app, "activate", G_CALLBACK(app_activate), data);
+    g_signal_connect(app, "activate", G_CALLBACK(app_activate), ud);
     status = g_application_run(G_APPLICATION(app), 0, NULL);
     g_object_unref(app);
-    destroy_filenames(data->filenames, data->count);
-    free(data);
+    destroy_filenames(ud->filenames, ud->count);
+    free(ud);
     if(pattern)
         free(pattern);
     return status;
