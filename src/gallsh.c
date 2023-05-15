@@ -196,7 +196,7 @@ void get_image_directory(char *filepath) {
     printf("%s is image directory\n", Image_Directory);
 }
 
-(USER_DATA *)new_user_data() {
+USER_DATA *new_user_data() {
     USER_DATA *ud = (USER_DATA *)malloc(sizeof(USER_DATA));
     ud->pattern = NULL;
     ud->directory = NULL;
@@ -212,71 +212,78 @@ void free_user_data(USER_DATA *ud) {
     if(ud->pattern)
         free(ud->pattern);
     for(int i=0; i < ud->count; i++)
-        free(ud->filenames[i];
+        free(ud->filenames[i]);
     free(ud);
 }
 
+bool valid_command(char c) {
+  return (c == 'd' || c == 'p' || c == 'm' || c == 'h' || c == 'r');
+
+}
 int main(int argc, char **argv) {
     GtkApplication *app;
     int status;
     srand(time(NULL));
-    (USER_DATA *)ud = new_user_data();
+    USER_DATA *ud = new_user_data();
     gtk_init();
     for(int i=1; i<argc; i++) {
-        if(strlen(argv[i] != 2 || argv[i][0] != '-' || (argv[i] != 'd' && argv[i] != 'p' && argv[i] != 'r' && argv[i] != 'm' && argv[i] != 'h') {
-            fprintf(stderr, "usage: gallsh -d <directory> -p <pattern> -r (no random) -m (maximized) -h (help)\n")
-                free_user_data(ud);
-                exit(1);
+        if(strlen(argv[i]) != 2 || argv[i][0] != '-' || !valid_command(argv[i][1])) {
+          fprintf(stderr, "usage: gallsh -d <directory> -p <pattern> -r (no random) -m (maximized) -h (help)\n");
+          free_user_data(ud);
+          exit(1);
         }
         char option = argv[i][1];
-        switch option {
+        switch(option) {
         case 'd' :
             i++;
-            if (i >= 
-
-        if(!strcmp(argv[i], "-r"))
-            ud->random = false;
-        if(!strcmp(argv[i], "-a")) {
-            if(i < (argc-1)) {
-                image_directory = argv[i+1];
-                i++;
+            if (i >= argc) {
+              fprintf(stderr, "missing directory argument\n");
+              free_user_data(ud);
+              exit(1);
             }
-            else {
-                printf("usage : gallsh -a <directory>\n");
-                exit(1);
-            }
-        }
-
-        else if(!strcmp(argv[i], "-m"))
-            ud->maximized = true;
-        else if(!strcmp(argv[i], "-h")) {
-            printf("gallsh [pattern]\n\t-r // no random\n\t-m  // maximized\n");
-            free(ud);
+            ud->directory = (char *)malloc(strlen(argv[i])+1);
+            strcpy(ud->directory, argv[i]);
+            break;
+        case 'r':
+          ud->random = false;
+          break;
+        case 'p':
+          i++;
+          if (i >= argc) {
+            fprintf(stderr, "missing pattern argument\n");
+            free_user_data(ud);
+            exit(1);
+          }
+          ud->pattern = (char *)malloc(strlen(argv[i])+1);
+          strcpy(ud->pattern, argv[i]);
+          break;
+        case 'm':
+          ud->maximized = true;
+          break;
+        case 'h':
+            fprintf(stderr, "usage: gallsh -d <directory> -p <pattern> -r (no random) -m (maximized) -h (help)\n");
+            free_user_data(ud);
             exit(0);
         }
-        else {
-            pattern = strdup(argv[i]);
-            break;
-        }
     }
-    get_image_directory(image_directory);
-    ud->count = count_directory_entries(Image_Directory, pattern);
+    get_image_directory(ud->directory);
+    ud->count = count_directory_entries(Image_Directory, ud->pattern);
     if(ud->count == 0) {
-        if(pattern)
-            fprintf(stderr, "no file found in the directory %s for pattern %s\n", Image_Directory, pattern);
+        if(ud->pattern)
+            fprintf(stderr, "no file found in the directory %s for pattern %s\n", Image_Directory, ud->pattern);
         else
             fprintf(stderr, "no file found in the directory %s\n", Image_Directory);
         return 1;
     }
-    if(pattern)
-        g_print("%d images in the directory for pattern %s\n", ud->count, pattern);
+    if(ud->pattern)
+        g_print("%d images in the directory for pattern %s\n", ud->count, ud->pattern);
     else
         g_print("%d images in the directory\n", ud->count);
 
     ud->filenames = (char **)malloc(sizeof(char *) * ud->count);
     ud->times_viewed = (int *)malloc(sizeof(int) * ud->count);
     for(int i=0; i < ud->count; ud->times_viewed[i++] = 0);
-    int count = read_filenames(ud->filenames, Image_Directory, pattern);
+    int count = read_filenames(ud->filenames, Image_Directory, ud->pattern);
     assert(count == ud->count);
     select_random_image(ud);
     app = gtk_application_new(NULL, G_APPLICATION_DEFAULT_FLAGS);
@@ -285,8 +292,6 @@ int main(int argc, char **argv) {
     g_object_unref(app);
     destroy_filenames(ud->filenames, ud->count);
     free(ud);
-    if(pattern)
-        free(pattern);
     return status;
 }
 
