@@ -26,6 +26,8 @@ typedef struct user_data {
     int views;
     bool random;
     bool maximized;
+    int timer;
+    guint timeout_id;
     GtkImage *image;
     GApplication *application;
 
@@ -35,6 +37,8 @@ int count_directory_entries(char *dirname, char *pattern);
 int read_filenames(char **entries, char *dirname, char *pattern);
 char *random_filename(char **entries, int count, int *selected);
 void destroy_filenames(char **entries, int count);
+void select_random_image(USER_DATA *ud);
+void load_image(USER_DATA *ud);
 
 int count_directory_entries(char *dirname, char *pattern) {
     printf("counting entries ");
@@ -54,6 +58,13 @@ int count_directory_entries(char *dirname, char *pattern) {
     printf("%d\n", count);
     return count;
 }
+
+gboolean on_timeout_event(gpointer ud) {
+    select_random_image(ud);
+    load_image(ud);
+    return TRUE;
+}
+
 
 int compare(const void *a, const void *b) {
     return strcmp(*(const char **)a, *(const char **)b);
@@ -184,6 +195,9 @@ static void app_activate(GApplication *app, gpointer p) {
         printf("size: %d x %d \n", width, height);
         gtk_window_fullscreen(window);
     }
+    if(ud->timer) {
+        ud->timeout_id = g_timeout_add_full(G_PRIORITY_DEFAULT, 1000*ud->timer, (GSourceFunc)on_timeout_event, ud, NULL);
+    }
     gtk_widget_show(window);
 }
 
@@ -209,6 +223,7 @@ USER_DATA *new_user_data() {
     ud->views = 0;
     ud->random = true;
     ud->maximized = false;
+    ud->timer = 0;
     return ud;
 }
 
@@ -223,7 +238,7 @@ void free_user_data(USER_DATA *ud) {
 }
 
 bool valid_command(char c) {
-  return (c == 'd' || c == 'p' || c == 'm' || c == 'h' || c == 'r');
+  return (c == 'd' || c == 'p' || c == 'm' || c == 'h' || c == 't' || c == 'r');
 
 }
 int main(int argc, char **argv) {
@@ -234,7 +249,7 @@ int main(int argc, char **argv) {
     gtk_init();
     for(int i=1; i<argc; i++) {
         if(strlen(argv[i]) != 2 || argv[i][0] != '-' || !valid_command(argv[i][1])) {
-          fprintf(stderr, "usage: gallsh -d <directory> -p <pattern> -r (no random) -m (maximized) -h (help)\n");
+          fprintf(stderr, "usage: gallsh -d <directory> -p <pattern> -r (no random) -m (maximized) -t <seconds> -h (help)\n");
           free_user_data(ud);
           exit(1);
         }
@@ -263,11 +278,20 @@ int main(int argc, char **argv) {
           ud->pattern = (char *)malloc(strlen(argv[i])+1);
           strcpy(ud->pattern, argv[i]);
           break;
+        case 't':
+          i++;
+          if (i >= argc) {
+            fprintf(stderr, "missing seconds argument\n");
+            free_user_data(ud);
+            exit(1);
+          }
+          ud->timer = atoi(argv[i]);
+          break;
         case 'm':
           ud->maximized = true;
           break;
         case 'h':
-            fprintf(stderr, "usage: gallsh -d <directory> -p <pattern> -r (no random) -m (maximized) -h (help)\n");
+            fprintf(stderr, "usage: gallsh -d <directory> -p <pattern> -r (no random) -m (maximized) -t <seconds> -h (help)\n");
             free_user_data(ud);
             exit(0);
         }
@@ -295,9 +319,11 @@ int main(int argc, char **argv) {
     app = gtk_application_new(NULL, G_APPLICATION_DEFAULT_FLAGS);
     g_signal_connect(app, "activate", G_CALLBACK(app_activate), ud);
     status = g_application_run(G_APPLICATION(app), 0, NULL);
+    if(ud->timer) {
+        g_source_remove(ud->timeout_id);
+    }
     g_object_unref(app);
     destroy_filenames(ud->filenames, ud->count);
     free(ud);
     return status;
 }
-
