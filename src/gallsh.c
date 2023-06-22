@@ -13,26 +13,39 @@
 #endif
 #endif
 
+#define DIRECTORY 'd'
+#define HELP      'h'
+#define MAXIMIZE  'm'
+#define NO_RANDOM 'r'
+#define PATTERN   'p'
+#define TIMER     't'
+#define NEXT      'n'
+#define PREVIOUS  'p'
+#define QUIT      'q'
+#define SPACE     ' '
+#define RANDOM    'r'
+
 char Image_Directory[4096] = "images/";
 
 typedef struct user_data {
     char *directory;
     char *pattern;
     char **filenames;
-    int *times_viewed;
+    int  *times_viewed;
     char *selected_filename;
-    int count;
-    int selected;
-    int views;
+    int  count;
+    int  selected;
+    int  views;
     bool random;
     bool maximized;
-    int timer;
-    guint timeout_id;
-    GtkImage *image;
+    int  timer;
+    guint        timeout_id;
+    GtkImage     *image;
     GApplication *application;
 
 } USER_DATA;
 
+void init_user_data();
 int count_directory_entries(char *dirname, char *pattern);
 int read_filenames(char **entries, char *dirname, char *pattern);
 char *random_filename(char **entries, int count, int *selected);
@@ -83,7 +96,6 @@ int read_filenames(char **entries, char *dirname, char *pattern) {
                     strcpy(entry_name, dirname);
                     strcat(entry_name, entry->d_name);
                     entries[count] = entry_name;
-                    // printf("%d %s\n", count, entries[count]);
                     count++;
                 }
             }
@@ -145,14 +157,14 @@ void load_image(USER_DATA *ud) {
     gtk_image_set_from_file(ud->image, ud->selected_filename);
 
     gtk_widget_queue_draw (GTK_WIDGET(gtk_widget_get_parent(GTK_WIDGET(ud->image))));
-    gtk_window_set_title(GTK_WINDOW(gtk_application_get_active_window(ud->application)), ud->selected_filename);
+    gtk_window_set_title(GTK_WINDOW(gtk_application_get_active_window((GtkApplication *)ud->application)), ud->selected_filename);
 }
 
 gboolean key_pressed ( GtkEventControllerKey* self, guint keyval, guint keycode, GdkModifierType* state, gpointer p) {
     USER_DATA *ud = (USER_DATA *)p;
-    if(keyval == 'q')
+    if(keyval == QUIT)
         g_application_quit(ud->application);
-    else if(ud->random && keyval == ' ' || keyval == 'r')
+    else if(ud->random && keyval == SPACE || keyval == RANDOM)
         select_random_image(ud);
     else if(keyval == 'n' || keyval == ' ')
         select_next_image(ud);
@@ -191,14 +203,14 @@ static void app_activate(GApplication *app, gpointer p) {
     {
         int width;
         int height;
-        gtk_window_get_default_size(window, &width, &height);
+        gtk_window_get_default_size((GtkWindow *)window, &width, &height);
         printf("size: %d x %d \n", width, height);
-        gtk_window_fullscreen(window);
+        gtk_window_fullscreen((GtkWindow *)window);
     }
     if(ud->timer) {
         ud->timeout_id = g_timeout_add_full(G_PRIORITY_DEFAULT, 1000*ud->timer, (GSourceFunc)on_timeout_event, ud, NULL);
     }
-    gtk_widget_show(window);
+    gtk_widget_set_visible(window, true);
 }
 
 void get_image_directory(char *filepath) {
@@ -238,62 +250,84 @@ void free_user_data(USER_DATA *ud) {
 }
 
 bool valid_command(char c) {
-  return (c == 'd' || c == 'p' || c == 'm' || c == 'h' || c == 't' || c == 'r');
+  return (   c == DIRECTORY
+          || c == HELP
+          || c == MAXIMIZE
+          || c == NO_RANDOM
+          || c == PATTERN
+          || c == TIMER );
 
 }
+void init_user_data(USER_DATA *ud) {
+    ud->filenames = (char **)malloc(sizeof(char *) * ud->count);
+    ud->times_viewed = (int *)malloc(sizeof(int) * ud->count);
+    for(int i=0; i < ud->count; ud->times_viewed[i++] = 0);
+    int count = read_filenames(ud->filenames, Image_Directory, ud->pattern);
+    assert(count == ud->count);
+    select_random_image(ud);
+}
+
 int main(int argc, char **argv) {
     GtkApplication *app;
     int status;
     srand(time(NULL));
     USER_DATA *ud = new_user_data();
     gtk_init();
+    char option;
     for(int i=1; i<argc; i++) {
-        if(strlen(argv[i]) != 2 || argv[i][0] != '-' || !valid_command(argv[i][1])) {
-          fprintf(stderr, "usage: gallsh -d <directory> -p <pattern> -r (no random) -m (maximized) -t <seconds> -h (help)\n");
-          free_user_data(ud);
-          exit(1);
+        if(argc == 2) {
+            option = PATTERN;
+            ud->pattern = (char *)malloc(strlen(argv[i])+1);
+            strcpy(ud->pattern, argv[i]);
         }
-        char option = argv[i][1];
-        switch(option) {
-        case 'd' :
-            i++;
-            if (i >= argc) {
-              fprintf(stderr, "missing directory argument\n");
-              free_user_data(ud);
-              exit(1);
+        else { 
+            if(strlen(argv[i]) != 2 || argv[i][0] != '-' || !valid_command(argv[i][1])) {
+                fprintf(stderr, "usage: gallsh -d <directory> -p <pattern> -r (no random) -m (maximized) -t <seconds> -h (help)\n");
+                free_user_data(ud);
+                exit(1);
             }
-            ud->directory = (char *)malloc(strlen(argv[i])+1);
-            strcpy(ud->directory, argv[i]);
-            break;
-        case 'r':
-          ud->random = false;
-          break;
-        case 'p':
-          i++;
-          if (i >= argc) {
-            fprintf(stderr, "missing pattern argument\n");
-            free_user_data(ud);
-            exit(1);
-          }
-          ud->pattern = (char *)malloc(strlen(argv[i])+1);
-          strcpy(ud->pattern, argv[i]);
-          break;
-        case 't':
-          i++;
-          if (i >= argc) {
-            fprintf(stderr, "missing seconds argument\n");
-            free_user_data(ud);
-            exit(1);
-          }
-          ud->timer = atoi(argv[i]);
-          break;
-        case 'm':
-          ud->maximized = true;
-          break;
-        case 'h':
-            fprintf(stderr, "usage: gallsh -d <directory> -p <pattern> -r (no random) -m (maximized) -t <seconds> -h (help)\n");
-            free_user_data(ud);
-            exit(0);
+            option = argv[i][1];
+            switch(option) {
+                case DIRECTORY :
+                    i++;
+                    if (i >= argc) {
+                        fprintf(stderr, "missing directory argument\n");
+                        free_user_data(ud);
+                        exit(1);
+                    }
+                    ud->directory = (char *)malloc(strlen(argv[i])+1);
+                    strcpy(ud->directory, argv[i]);
+                    break;
+                case NO_RANDOM :
+                    ud->random = false;
+                    break;
+                case PATTERN :
+                    i++;
+                    if (i >= argc) {
+                        fprintf(stderr, "missing pattern argument\n");
+                        free_user_data(ud);
+                        exit(1);
+                    }
+                    ud->pattern = (char *)malloc(strlen(argv[i])+1);
+                    strcpy(ud->pattern, argv[i]);
+                    break;
+                case TIMER :
+                    i++;
+                    if (i >= argc) {
+                        fprintf(stderr, "missing seconds argument\n");
+                        free_user_data(ud);
+                        exit(1);
+                    }
+                    ud->timer = atoi(argv[i]);
+                    break;
+                case MAXIMIZE :
+                    ud->maximized = true;
+                    break;
+                case HELP :
+                    fprintf(stderr, "usage: gallsh -d <directory> -p <pattern> -r (no random) -m (maximized) -t <seconds> -h (help)\n");
+                    free_user_data(ud);
+                    exit(0);
+            }
         }
     }
     get_image_directory(ud->directory);
@@ -310,15 +344,11 @@ int main(int argc, char **argv) {
     else
         g_print("%d images in the directory\n", ud->count);
 
-    ud->filenames = (char **)malloc(sizeof(char *) * ud->count);
-    ud->times_viewed = (int *)malloc(sizeof(int) * ud->count);
-    for(int i=0; i < ud->count; ud->times_viewed[i++] = 0);
-    int count = read_filenames(ud->filenames, Image_Directory, ud->pattern);
-    assert(count == ud->count);
-    select_random_image(ud);
+    init_user_data(ud);
     app = gtk_application_new(NULL, G_APPLICATION_DEFAULT_FLAGS);
     g_signal_connect(app, "activate", G_CALLBACK(app_activate), ud);
     status = g_application_run(G_APPLICATION(app), 0, NULL);
+
     if(ud->timer) {
         g_source_remove(ud->timeout_id);
     }
