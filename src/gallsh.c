@@ -275,7 +275,7 @@ int main(int argc, char **argv) {
     gtk_init();
     char option;
     for(int i=1; i<argc; i++) {
-        if(argc == 2) {
+        if(argc == 2 && argv[1][0] != '-') {
             option = PATTERN;
             ud->pattern = (char *)malloc(strlen(argv[i])+1);
             strcpy(ud->pattern, argv[i]);
