@@ -13,10 +13,12 @@
 #endif
 #endif
 
+#define MAX_FILE_PATH 1024
 #define DIRECTORY 'd'
+#define RECURSIVE 'r'
 #define HELP      'h'
 #define MAXIMIZE  'm'
-#define NO_RANDOM 'r'
+#define NO_RANDOM 'o'
 #define PATTERN   'p'
 #define TIMER     't'
 #define NEXT      'n'
@@ -38,6 +40,7 @@ typedef struct user_data {
     int  views;
     bool random;
     bool maximized;
+    bool recursive;
     int  timer;
     guint        timeout_id;
     GtkImage     *image;
@@ -46,14 +49,14 @@ typedef struct user_data {
 } USER_DATA;
 
 void init_user_data();
-int count_directory_entries(char *dirname, char *pattern);
-int read_filenames(char **entries, char *dirname, char *pattern);
+int count_directory_entries(char *dirname, char *pattern, bool recursive);
+int read_filenames(char **entries, char *dirname, char *pattern, bool recursive, int count);
 char *random_filename(char **entries, int count, int *selected);
 void destroy_filenames(char **entries, int count);
 void select_random_image(USER_DATA *ud);
 void load_image(USER_DATA *ud);
 
-int count_directory_entries(char *dirname, char *pattern) {
+int count_directory_entries(char *dirname, char *pattern, bool recursive) {
     printf("counting entries ");
     DIR *directory;
     if(pattern != NULL)
@@ -63,9 +66,17 @@ int count_directory_entries(char *dirname, char *pattern) {
     int count = 0;
     if(directory) {
         while((entry = readdir(directory)) != NULL)
-            if(entry->d_type != DT_DIR)
+            if(entry->d_type != DT_DIR) {
                 if(!pattern || (strstr(entry->d_name, pattern)))
                     count++;
+            }
+            else {
+                if(recursive && strcmp(entry->d_name, ".") && strcmp(entry->d_name, "..")) {
+                    char filePath[MAX_FILE_PATH];
+                    snprintf(filePath, sizeof(filePath), "%s/%s", dirname, entry->d_name);
+                    count += count_directory_entries(filePath, pattern, recursive);
+                }
+            }
         closedir(directory);
     }
     printf("\n");
@@ -83,11 +94,10 @@ int compare(const void *a, const void *b) {
     return strcmp(*(const char **)a, *(const char **)b);
 }
 
-int read_filenames(char **entries, char *dirname, char *pattern) {
+int read_filenames(char **entries, char *dirname, char *pattern, bool recursive, int count) {
     DIR *directory;
     struct dirent *entry;
     directory = opendir(dirname);
-    int count = 0;
     if(directory) {
         while((entry = readdir(directory)) != NULL)
             if(entry->d_type != DT_DIR) {
@@ -97,6 +107,15 @@ int read_filenames(char **entries, char *dirname, char *pattern) {
                     strcat(entry_name, entry->d_name);
                     entries[count] = entry_name;
                     count++;
+                }
+            }
+            else {
+                if(recursive && strcmp(entry->d_name, ".") && strcmp(entry->d_name, "..")) {
+                    char *new_dirname = (char *)malloc(strlen(dirname) + strlen(entry->d_name) + 2);
+                    strcpy(new_dirname, dirname);
+                    strcat(new_dirname, entry->d_name);
+                    strcat(new_dirname, "/");
+                    count = read_filenames(entries, new_dirname, pattern, recursive, count);
                 }
             }
         closedir(directory);
@@ -129,7 +148,7 @@ void select_prev_image(USER_DATA *ud) {
 void select_random_image(USER_DATA *ud) {
     if(!ud->count)
         return;
-    if(ud->count == 1) {
+    if(ud->count == 1 || ud->random == false) {
         ud->selected = 0;
         return;
     }
@@ -139,7 +158,7 @@ void select_random_image(USER_DATA *ud) {
         search = true;
         ud->selected = rand() % ud->count;
         g_print("selecting %d\n", ud->selected);
-        if(ud->selected != old 
+        if(ud->selected != old
                 && (ud->times_viewed[ud->selected] == 0 
                     || ud->views >= ud->count)) 
             search = false;
@@ -235,6 +254,7 @@ USER_DATA *new_user_data() {
     ud->views = 0;
     ud->random = true;
     ud->maximized = false;
+    ud->recursive = false;
     ud->timer = 0;
     return ud;
 }
@@ -253,6 +273,7 @@ bool valid_command(char c) {
   return (   c == DIRECTORY
           || c == HELP
           || c == MAXIMIZE
+          || c == RECURSIVE
           || c == NO_RANDOM
           || c == PATTERN
           || c == TIMER );
@@ -262,7 +283,7 @@ void init_user_data(USER_DATA *ud) {
     ud->filenames = (char **)malloc(sizeof(char *) * ud->count);
     ud->times_viewed = (int *)malloc(sizeof(int) * ud->count);
     for(int i=0; i < ud->count; ud->times_viewed[i++] = 0);
-    int count = read_filenames(ud->filenames, Image_Directory, ud->pattern);
+    int count = read_filenames(ud->filenames, Image_Directory, ud->pattern, ud->recursive, 0);
     assert(count == ud->count);
     select_random_image(ud);
 }
@@ -282,7 +303,8 @@ int main(int argc, char **argv) {
         }
         else { 
             if(strlen(argv[i]) != 2 || argv[i][0] != '-' || !valid_command(argv[i][1])) {
-                fprintf(stderr, "usage: gallsh -d <directory> -p <pattern> -r (no random) -m (maximized) -t <seconds> -h (help)\n");
+                fprintf(stderr, "usage: gallsh -%c <directory> -%c <pattern> -%c (recursive) -%c (no random) -%c (maximized) -%c <seconds> -%c (help)\n",
+                        DIRECTORY, PATTERN, RECURSIVE, NO_RANDOM, MAXIMIZE, TIMER, HELP);
                 free_user_data(ud);
                 exit(1);
             }
@@ -300,6 +322,9 @@ int main(int argc, char **argv) {
                     break;
                 case NO_RANDOM :
                     ud->random = false;
+                    break;
+                case RECURSIVE :
+                    ud->recursive = true;
                     break;
                 case PATTERN :
                     i++;
@@ -331,7 +356,7 @@ int main(int argc, char **argv) {
         }
     }
     get_image_directory(ud->directory);
-    ud->count = count_directory_entries(Image_Directory, ud->pattern);
+    ud->count = count_directory_entries(Image_Directory, ud->pattern, ud->recursive);
     if(ud->count == 0) {
         if(ud->pattern)
             fprintf(stderr, "no file found in the directory %s for pattern %s\n", Image_Directory, ud->pattern);
