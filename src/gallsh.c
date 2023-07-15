@@ -63,12 +63,12 @@ int count_directory_entries(char *dirname, char *pattern) {
     int count = 0;
     if(directory) {
         while((entry = readdir(directory)) != NULL)
-            if(entry->d_name[0] != '.')
+            if(entry->d_type != DT_DIR)
                 if(!pattern || (strstr(entry->d_name, pattern)))
                     count++;
         closedir(directory);
     }
-    printf("%d\n", count);
+    printf("\n");
     return count;
 }
 
@@ -90,7 +90,7 @@ int read_filenames(char **entries, char *dirname, char *pattern) {
     int count = 0;
     if(directory) {
         while((entry = readdir(directory)) != NULL)
-            if(entry->d_name[0] != '.') {
+            if(entry->d_type != DT_DIR) {
                 if(!pattern || strstr(entry->d_name, pattern)) {
                     char *entry_name = (char *)malloc(strlen(dirname) + strlen(entry->d_name) + 1);
                     strcpy(entry_name, dirname);
