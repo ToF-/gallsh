@@ -13,6 +13,11 @@
 #endif
 #endif
 
+#define MAX_IMAGES 10000
+#define PNG ".png"
+#define JPG ".jpg"
+#define JPEG ".jpeg"
+
 #define MAX_FILE_PATH 1024
 #define DIRECTORY 'd'
 #define RECURSIVE 'r'
@@ -55,12 +60,19 @@ char *random_filename(char **entries, int count, int *selected);
 void destroy_filenames(char **entries, int count);
 void select_random_image(USER_DATA *ud);
 void load_image(USER_DATA *ud);
+bool valid_image_file(char *name);
+
+
+bool valid_image_file(char *name) {
+    char *ext = strrchr(name, '.');
+    if(!ext)
+        return false;
+    return (!strcmp(PNG, ext) || !strcmp(JPG, ext) || !strcmp(JPEG, ext));
+}
 
 int count_directory_entries(char *dirname, char *pattern, bool recursive) {
-    printf("counting entries ");
+    printf(".");
     DIR *directory;
-    if(pattern != NULL)
-        printf("with pattern %s ",pattern);
     struct dirent *entry;
     directory = opendir(dirname);
     int count = 0;
@@ -68,7 +80,8 @@ int count_directory_entries(char *dirname, char *pattern, bool recursive) {
         while((entry = readdir(directory)) != NULL)
             if(entry->d_type != DT_DIR) {
                 if(!pattern || (strstr(entry->d_name, pattern)))
-                    count++;
+                    if(valid_image_file(entry->d_name))
+                        count++;
             }
             else {
                 if(recursive && strcmp(entry->d_name, ".") && strcmp(entry->d_name, "..")) {
@@ -79,7 +92,6 @@ int count_directory_entries(char *dirname, char *pattern, bool recursive) {
             }
         closedir(directory);
     }
-    printf("\n");
     return count;
 }
 
@@ -103,10 +115,12 @@ int read_filenames(char **entries, char *dirname, char *pattern, bool recursive,
             if(entry->d_type != DT_DIR) {
                 if(!pattern || strstr(entry->d_name, pattern)) {
                     char *entry_name = (char *)malloc(strlen(dirname) + strlen(entry->d_name) + 1);
-                    strcpy(entry_name, dirname);
-                    strcat(entry_name, entry->d_name);
-                    entries[count] = entry_name;
-                    count++;
+                    if(valid_image_file(entry->d_name)) {
+                        strcpy(entry_name, dirname);
+                        strcat(entry_name, entry->d_name);
+                        entries[count] = entry_name;
+                        count++;
+                    }
                 }
             }
             else {
@@ -116,6 +130,7 @@ int read_filenames(char **entries, char *dirname, char *pattern, bool recursive,
                     strcat(new_dirname, entry->d_name);
                     strcat(new_dirname, "/");
                     count = read_filenames(entries, new_dirname, pattern, recursive, count);
+                    free(new_dirname);
                 }
             }
         closedir(directory);
@@ -362,6 +377,13 @@ int main(int argc, char **argv) {
             fprintf(stderr, "no file found in the directory %s for pattern %s\n", Image_Directory, ud->pattern);
         else
             fprintf(stderr, "no file found in the directory %s\n", Image_Directory);
+        return 1;
+    }
+    if(ud->count >= MAX_IMAGES) {
+        if(ud->pattern)
+            fprintf(stderr, "max image limit (%d/%d) exceeded for pattern %s\n", ud->count, MAX_IMAGES, ud->pattern);
+        else
+            fprintf(stderr, "max image limit (%d/%d) exceeded for file found in the directory %s\n", ud->count, MAX_IMAGES, Image_Directory);
         return 1;
     }
     if(ud->pattern)
