@@ -160,32 +160,25 @@ void select_prev_image(PARAMETERS *p) {
         p->selected = p->count-1;;
 }
 void select_random_image(PARAMETERS *p) {
-    if(!p->count)
-        return;
-    if(p->count == 1 || p->random == false) {
+    if(p->count < 2 || p->random == false) {
         p->selected = 0;
         return;
     }
     int old = p->selected;
-    int search = true;
+    int keep_searching = true;
     do{
-        search = true;
         p->selected = rand() % p->count;
-        g_print("selecting %d\n", p->selected);
         if(p->selected != old
-                && (p->times_viewed[p->selected] == 0 
-                    || p->views >= p->count)) 
-            search = false;
-        if(search)
-            g_print("repeating, reselect\n");
-    }while(search);
+                && (p->times_viewed[p->selected] == 0
+                    || p->views >= p->count))
+            keep_searching = false;
+    }while(keep_searching);
 }
 
 void load_image(PARAMETERS *p) {
     p->selected_filename = p->filenames[p->selected];
     p->times_viewed[p->selected]++;
     p->views++;
-    g_print("%d\t%d\t%d\t%s\n", p->views, p->selected, p->times_viewed[p->selected], p->selected_filename);
     assert(p->selected_filename);
     gtk_image_set_from_file(p->image, p->selected_filename);
 
