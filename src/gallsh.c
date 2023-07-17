@@ -53,7 +53,6 @@ typedef struct parameters {
 
 } PARAMETERS;
 
-void init_parameters();
 int count_directory_entries(char *dirname, char *pattern, bool recursive);
 int read_filenames(char **entries, char *dirname, char *pattern, bool recursive, int count);
 char *random_filename(char **entries, int count, int *selected);
@@ -262,7 +261,7 @@ void get_image_directory(char *filepath) {
     printf("%s is image directory\n", Image_Directory);
 }
 
-PARAMETERS *new_user_data() {
+PARAMETERS *new_parameters() {
     PARAMETERS *p = (PARAMETERS *)malloc(sizeof(PARAMETERS));
     p->pattern = NULL;
     p->directory = NULL;
@@ -274,7 +273,7 @@ PARAMETERS *new_user_data() {
     return p;
 }
 
-void free_user_data(PARAMETERS *p) {
+void free_parameters(PARAMETERS *p) {
     if(p->directory)
         free(p->directory);
     if(p->pattern)
@@ -294,104 +293,97 @@ bool valid_command(char c) {
           || c == TIMER );
 
 }
-void init_user_data(PARAMETERS *p) {
+void get_image_filenames(PARAMETERS *p) {
     p->filenames = (char **)malloc(sizeof(char *) * p->count);
     p->times_viewed = (int *)malloc(sizeof(int) * p->count);
     for(int i=0; i < p->count; p->times_viewed[i++] = 0);
     int count = read_filenames(p->filenames, Image_Directory, p->pattern, p->recursive, 0);
     assert(count == p->count);
-    select_random_image(p);
+}
+
+int get_parameters(PARAMETERS *p, int argc, char **argv) {
+    if(argc == 2 && argv[1][0] != '-') {
+        p->pattern = (char *)malloc(strlen(argv[1])+1);
+        strcpy(p->pattern, argv[1]);
+        return 0;
+    }
+    char option;
+    for(int i=1; i<argc; i++) {
+        if(strlen(argv[i]) != 2 || argv[i][0] != '-' || !valid_command(argv[i][1])) {
+            fprintf(stderr, "usage: gallsh -%c <directory> -%c <pattern> -%c (recursive) -%c (no random) -%c (maximized) -%c <seconds> -%c (help)\n",
+                    DIRECTORY, PATTERN, RECURSIVE, NO_RANDOM, MAXIMIZE, TIMER, HELP);
+            return 1;
+        }
+        option = argv[i][1];
+        switch(option) {
+            case NO_RANDOM :
+                p->random = false;
+                break;
+            case RECURSIVE :
+                p->recursive = true;
+                break;
+            case MAXIMIZE :
+                p->maximized = true;
+                break;
+            case HELP :
+                fprintf(stderr, "usage: gallsh -d <directory> -p <pattern> -r (no random) -m (maximized) -t <seconds> -h (help)\n");
+                return 1;
+            case DIRECTORY :
+                i++;
+                if (i >= argc) {
+                    fprintf(stderr, "missing directory argument\n");
+                    return 1;
+                }
+                p->directory = (char *)malloc(strlen(argv[i])+1);
+                strcpy(p->directory, argv[i]);
+                break;
+            case PATTERN :
+                i++;
+                if (i >= argc) {
+                    fprintf(stderr, "missing pattern argument\n");
+                    return 1;
+                }
+                p->pattern = (char *)malloc(strlen(argv[i])+1);
+                strcpy(p->pattern, argv[i]);
+                break;
+            case TIMER :
+                i++;
+                if (i >= argc) {
+                    fprintf(stderr, "missing seconds argument\n");
+                    free_parameters(p);
+                    return 1;
+                }
+                p->timer = atoi(argv[i]);
+                break;
+        }
+    }
+    return 0;
 }
 
 int main(int argc, char **argv) {
     GtkApplication *app;
     int status;
     srand(time(NULL));
-    PARAMETERS *p = new_user_data();
-    gtk_init();
-    char option;
-    for(int i=1; i<argc; i++) {
-        if(argc == 2 && argv[1][0] != '-') {
-            option = PATTERN;
-            p->pattern = (char *)malloc(strlen(argv[i])+1);
-            strcpy(p->pattern, argv[i]);
-        }
-        else { 
-            if(strlen(argv[i]) != 2 || argv[i][0] != '-' || !valid_command(argv[i][1])) {
-                fprintf(stderr, "usage: gallsh -%c <directory> -%c <pattern> -%c (recursive) -%c (no random) -%c (maximized) -%c <seconds> -%c (help)\n",
-                        DIRECTORY, PATTERN, RECURSIVE, NO_RANDOM, MAXIMIZE, TIMER, HELP);
-                free_user_data(p);
-                exit(1);
-            }
-            option = argv[i][1];
-            switch(option) {
-                case DIRECTORY :
-                    i++;
-                    if (i >= argc) {
-                        fprintf(stderr, "missing directory argument\n");
-                        free_user_data(p);
-                        exit(1);
-                    }
-                    p->directory = (char *)malloc(strlen(argv[i])+1);
-                    strcpy(p->directory, argv[i]);
-                    break;
-                case NO_RANDOM :
-                    p->random = false;
-                    break;
-                case RECURSIVE :
-                    p->recursive = true;
-                    break;
-                case PATTERN :
-                    i++;
-                    if (i >= argc) {
-                        fprintf(stderr, "missing pattern argument\n");
-                        free_user_data(p);
-                        exit(1);
-                    }
-                    p->pattern = (char *)malloc(strlen(argv[i])+1);
-                    strcpy(p->pattern, argv[i]);
-                    break;
-                case TIMER :
-                    i++;
-                    if (i >= argc) {
-                        fprintf(stderr, "missing seconds argument\n");
-                        free_user_data(p);
-                        exit(1);
-                    }
-                    p->timer = atoi(argv[i]);
-                    break;
-                case MAXIMIZE :
-                    p->maximized = true;
-                    break;
-                case HELP :
-                    fprintf(stderr, "usage: gallsh -d <directory> -p <pattern> -r (no random) -m (maximized) -t <seconds> -h (help)\n");
-                    free_user_data(p);
-                    exit(0);
-            }
-        }
+    PARAMETERS *p = new_parameters();
+    if(get_parameters(p, argc, argv)) {
+        free_parameters(p);
+        return 1;
     }
+    gtk_init();
     get_image_directory(p->directory);
     p->count = count_directory_entries(Image_Directory, p->pattern, p->recursive);
     if(p->count == 0) {
-        if(p->pattern)
-            fprintf(stderr, "no file found in the directory %s for pattern %s\n", Image_Directory, p->pattern);
-        else
-            fprintf(stderr, "no file found in the directory %s\n", Image_Directory);
+        fprintf(stderr, "\nno image found\n");
         return 1;
     }
     if(p->count >= MAX_IMAGES) {
-        if(p->pattern)
-            fprintf(stderr, "max image limit (%d/%d) exceeded for pattern %s\n", p->count, MAX_IMAGES, p->pattern);
-        else
-            fprintf(stderr, "max image limit (%d/%d) exceeded for file found in the directory %s\n", p->count, MAX_IMAGES, Image_Directory);
+        fprintf(stderr, "\nmax image limit (%d/%d) exceeded\n", p->count, MAX_IMAGES);
         return 1;
     }
-    if(p->pattern)
-        g_print("%d images in the directory for pattern %s\n", p->count, p->pattern);
-    else
-        g_print("%d images in the directory\n", p->count);
+    g_print("\n%d images found\n", p->count);
 
-    init_user_data(p);
+    get_image_filenames(p);
+    select_random_image(p);
     app = gtk_application_new(NULL, G_APPLICATION_DEFAULT_FLAGS);
     g_signal_connect(app, "activate", G_CALLBACK(app_activate), p);
     status = g_application_run(G_APPLICATION(app), 0, NULL);
