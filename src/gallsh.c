@@ -58,6 +58,7 @@ int read_filenames(char **entries, char *dirname, char *pattern, bool recursive,
 char *random_filename(char **entries, int count, int *selected);
 void destroy_filenames(char **entries, int count);
 void select_random_image(PARAMETERS *p);
+void select_next_image(PARAMETERS *p);
 void load_image(PARAMETERS *p);
 bool valid_image_file(char *name);
 
@@ -94,8 +95,11 @@ int count_directory_entries(char *dirname, char *pattern, bool recursive) {
     return count;
 }
 
-gboolean on_timeout_event(gpointer p) {
-    select_random_image(p);
+gboolean on_timeout_event(PARAMETERS *p) {
+    if(p->random)
+        select_random_image(p);
+    else
+        select_next_image(p);
     load_image(p);
     return TRUE;
 }
@@ -213,7 +217,7 @@ static void app_activate(GApplication *app, gpointer gp) {
     p->image = image;
     display = gtk_widget_get_display(GTK_WIDGET(window));
     css_provider = gtk_css_provider_new();
-    gtk_css_provider_load_from_data(css_provider, "window { background-color:black; } image { margin:10em; }", -1);
+    gtk_css_provider_load_from_data(css_provider, "window { background-color:black; }", -1);
     gtk_style_context_add_provider_for_display(display, GTK_STYLE_PROVIDER(css_provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
     event_controller = gtk_event_controller_key_new();
